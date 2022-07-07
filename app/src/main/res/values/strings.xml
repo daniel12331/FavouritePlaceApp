@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Favourite Place App</string>
+    <string name="desc">Description</string>
+    <string name="date">Date</string>
+    <string name="location">Location</string>
+    <string name="detail_view_map">VIEW ON MAP</string>
+</resources>
