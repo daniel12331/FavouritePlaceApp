@@ -7,7 +7,7 @@
     android:layout_height="match_parent"
     tools:context=".activities.DetailActivity">
     <androidx.appcompat.widget.Toolbar
-        android:id="@+id/toolbar_happy_place_detail"
+        android:id="@+id/toolbar_fav_place_detail"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
         android:background="@color/colorPrimary"
@@ -24,7 +24,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/toolbar_happy_place_detail">
+        app:layout_constraintTop_toBottomOf="@id/toolbar_fav_place_detail">
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"

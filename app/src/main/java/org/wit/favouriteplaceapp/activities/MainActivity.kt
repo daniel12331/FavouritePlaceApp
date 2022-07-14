@@ -60,6 +60,9 @@ class MainActivity : AppCompatActivity() {
                 //moving over to the other activity with the intent...
               val intent = Intent(this@MainActivity,
                   DetailActivity::class.java)
+                //we pass a whole object (.putExtra), we serialize so we can pass it through .putExtra
+
+                intent.putExtra(EXTRA_PLACE_DETAILS, model)
                 startActivity(intent)
             }
         })
@@ -77,6 +80,7 @@ class MainActivity : AppCompatActivity() {
 
     companion object{
         var ADD_PLACE_ACTIVITY_REQUEST_CODE = 1
+        var EXTRA_PLACE_DETAILS = "extra_place_details"
 
     }
 }
