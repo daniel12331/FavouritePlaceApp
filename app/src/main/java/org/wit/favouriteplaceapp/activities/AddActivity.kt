@@ -5,6 +5,7 @@ import android.app.Activity
 import android.app.DatePickerDialog
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.graphics.Bitmap
 import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
@@ -123,6 +124,9 @@ class AddActivity : AppCompatActivity(), View.OnClickListener{
 
                 }
             }
+/**
+--------------------Gallery and Camera picking functionality--------------------------
+*/
             //When button is pressed we create a dialog, having two options one for
             //choosing photo libary or the other for using the camera...
             R.id.AddImageBtn ->{
@@ -135,10 +139,8 @@ class AddActivity : AppCompatActivity(), View.OnClickListener{
                     _, which ->
                     when(which){
                         0 -> choosePhotoFromGallery()
-                        1 -> Toast.makeText(
-                        this@AddActivity,
-                        "Camera Selection ",
-                        Toast.LENGTH_SHORT).show()
+                        //we can now call our chooseImage... for camera selection
+                        1 -> chooseImageFromCamera()
 
                     }
                 }
@@ -159,7 +161,8 @@ class AddActivity : AppCompatActivity(), View.OnClickListener{
     }
 
 
-    //
+
+
     public override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         //We check if the resultCode is ok
@@ -183,12 +186,22 @@ class AddActivity : AppCompatActivity(), View.OnClickListener{
                         Toast.makeText(this@AddActivity, "Failed to load image...", Toast.LENGTH_SHORT).show()
                     }
                 }
+                //Camera request code...
+
+            } else if(requestCode == CAMERA){
+                //https://stackoverflow.com/questions/5991319/capture-image-from-camera-and-display-in-activity
+                //we take the "data" and we get extras from it so when we take the image the data will contain the image, we get that data by using .get("data") which will give us the object,
+                // and then we convert it into a bitmap...
+                val selectedImageFromCamera : Bitmap = data!!.extras!!.get("data") as Bitmap
+                Imageholder.setImageBitmap(selectedImageFromCamera)
 
             }
         }
     }
 
-
+/**
+--------------------Permission handling using dexter--------------------------
+ */
     //https://github.com/Karumi/Dexter Dexter -- Multiple Permissions -- Library
     // https://www.geeksforgeeks.org/easy-runtime-permissions-in-android-with-dexter/
     private fun choosePhotoFromGallery(){
@@ -248,8 +261,46 @@ class AddActivity : AppCompatActivity(), View.OnClickListener{
         }).onSameThread().check()
     }
 
+    //Similar code from above but different permissions used, also use a different intent
+    private fun chooseImageFromCamera(){
+        Dexter.withContext(this).withPermissions(
+            Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE,
+            Manifest.permission.CAMERA
+
+        ).withListener(object: MultiplePermissionsListener{
+            override fun onPermissionsChecked(report: MultiplePermissionsReport?)
+            {
+
+                if(report!!.areAllPermissionsGranted()){
+                    //Intent will be directly to the mediastore
+                    val galleryIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+                    startActivityForResult(galleryIntent, CAMERA)
+                }}
+            override fun onPermissionRationaleShouldBeShown(permissions: MutableList<PermissionRequest>,
+                                                            token: PermissionToken )
+            {
+                AlertDialog.Builder(this@AddActivity).setMessage(
+                    "Permissions need to enabled in settings").setPositiveButton("GO TO SETTINGS"
+                ) { _, _ ->
+                    try {
+                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                        val uri = Uri.fromParts("package", packageName, null)
+                        intent.data = uri
+                        startActivity(intent)
+                    } catch (e: ActivityNotFoundException) {
+                        e.printStackTrace()
+                    }
+                }.setNegativeButton("Cancel") {dialog, _ ->
+                    dialog.dismiss()
+                }.show()
+            }
+        }).onSameThread().check()
+    }
+
     //companion object for static variables...
 companion object {
-    private const val GALLERY = 1
+        private const val GALLERY = 1
+        private const val CAMERA = 2
 }
 }
