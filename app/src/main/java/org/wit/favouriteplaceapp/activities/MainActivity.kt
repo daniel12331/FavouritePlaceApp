@@ -49,6 +49,7 @@ class MainActivity : AppCompatActivity() {
         mainLayout.favPlaceList.layoutManager = LinearLayoutManager(this)
         mainLayout.favPlaceList.setHasFixedSize(true)
 
+
         val placesAdapter = PlaceAdapter(this, favPlaceList)
         mainLayout.favPlaceList.adapter = placesAdapter
 
@@ -58,9 +59,10 @@ class MainActivity : AppCompatActivity() {
             //overiding the onclick function that i have created...
             override fun onClick(position: Int, model: PlaceModel) {
                 //moving over to the other activity with the intent...
-              val intent = Intent(this@MainActivity,
-                  DetailActivity::class.java)
+                val intent = Intent(this@MainActivity,
+                    DetailActivity::class.java)
                 //we pass a whole object (.putExtra), we serialize so we can pass it through .putExtra
+                //we dont actually have to change this part of the code as (.putExtra) can be used with parcelable
 
                 intent.putExtra(EXTRA_PLACE_DETAILS, model)
                 startActivity(intent)

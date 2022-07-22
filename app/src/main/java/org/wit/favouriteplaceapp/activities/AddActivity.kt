@@ -4,6 +4,8 @@ import android.Manifest
 import android.app.Activity
 import android.app.DatePickerDialog
 import android.content.ActivityNotFoundException
+import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
@@ -26,7 +28,10 @@ import org.wit.favouriteplaceapp.R
 import org.wit.favouriteplaceapp.database.Database
 import org.wit.favouriteplaceapp.databinding.ActivityAddBinding
 import org.wit.favouriteplaceapp.models.PlaceModel
+import java.io.File
+import java.io.FileOutputStream
 import java.io.IOException
+import java.io.OutputStream
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.Calendar.getInstance
@@ -36,10 +41,11 @@ class AddActivity : AppCompatActivity(), View.OnClickListener{
 
     private var cal = getInstance()
     private lateinit var dateSetListner: DatePickerDialog.OnDateSetListener
+    private var saveImageURI : Uri? = null
     private var Latitude : Double = 0.0
     private var Longitude : Double = 0.0
 
-    override fun onCreate(savedInstanceState: Bundle?) { 
+    override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         // Binding add_activity xml file and setting content view
@@ -90,6 +96,7 @@ class AddActivity : AppCompatActivity(), View.OnClickListener{
                     cal.get(Calendar.DAY_OF_MONTH)
                 ).show()
             }
+
             R.id.SaveBtn ->{
                 when {
                     //Validation
@@ -101,42 +108,48 @@ class AddActivity : AppCompatActivity(), View.OnClickListener{
                     }
                     addLayout.location.text.isNullOrEmpty() -> {
                         Toast.makeText(this, "Please enter a location", Toast.LENGTH_SHORT).show()
-                    } else -> {
-                    val favModel = PlaceModel(
-                        0,
-                        addLayout.title.text.toString(),
-                        "no",
-                        addLayout.description.text.toString(),
-                        addLayout.date.text.toString(),
-                        addLayout.location.text.toString(),
-                        Latitude,
-                        Longitude
-                    )
-                    val dbHandler =  Database(this)
-                    //the add method returns a long value which we store below
-                    val addFavPlace = dbHandler.addFavouritePlace(favModel)
-                    if(addFavPlace > 0){
-                        setResult(Activity.RESULT_OK)
-                        finish()
                     }
-                    //Finishes add activity and goes back to main
-                }
+                    saveImageURI == null ->{
+                        Toast.makeText(this, "Please select an Image", Toast.LENGTH_SHORT).show()
+                    }
+                    else -> {
+
+                        val favModel = PlaceModel(
+
+                            0,
+                            addLayout.title.text.toString(),
+                            saveImageURI.toString(),
+                            addLayout.description.text.toString(),
+                            addLayout.date.text.toString(),
+                            addLayout.location.text.toString(),
+                            Latitude,
+                            Longitude
+                        )
+                        val dbHandler =  Database(this)
+                        //the add method returns a long value which we store below
+                        val addFavPlace = dbHandler.addFavouritePlace(favModel)
+                        if(addFavPlace > 0){
+                            setResult(Activity.RESULT_OK)
+                            finish()
+                        }
+                        //Finishes add activity and goes back to main
+                    }
 
                 }
             }
-/**
---------------------Gallery and Camera picking functionality--------------------------
-*/
+            /**
+            --------------------Gallery and Camera picking functionality--------------------------
+             */
             //When button is pressed we create a dialog, having two options one for
             //choosing photo libary or the other for using the camera...
             R.id.AddImageBtn ->{
                 val pictureDialog = AlertDialog.Builder(this)
                 pictureDialog.setTitle("Select Action")
                 val pictureDialogItems = arrayOf("Select Photo from gallery",
-                "Capture photo from camera")
+                    "Capture photo from camera")
                 pictureDialog.setItems(pictureDialogItems){
                     //never using the first variable...
-                    _, which ->
+                        _, which ->
                     when(which){
                         0 -> choosePhotoFromGallery()
                         //we can now call our chooseImage... for camera selection
@@ -179,6 +192,11 @@ class AddActivity : AppCompatActivity(), View.OnClickListener{
                         //cant find a alternative instead of using getBitmap
                         //we pass the data through getBitmap and we use the contentresolver to resolve the contentURI to the content provider..
                         val selectedImage = MediaStore.Images.Media.getBitmap(this.contentResolver, contentURI)
+
+
+
+                        //we call the storingImage and we pass our bitmap(selectedImage)
+                        saveImageURI = storingImage(selectedImage)
                         //finally we set the image
                         Imageholder.setImageBitmap(selectedImage)
                     } catch (e: IOException){
@@ -193,15 +211,19 @@ class AddActivity : AppCompatActivity(), View.OnClickListener{
                 //we take the "data" and we get extras from it so when we take the image the data will contain the image, we get that data by using .get("data") which will give us the object,
                 // and then we convert it into a bitmap...
                 val selectedImageFromCamera : Bitmap = data!!.extras!!.get("data") as Bitmap
+
+                //we call the storingImage and we pass our bitmap(selectedImageFromCamera)
+                saveImageURI = storingImage(selectedImageFromCamera)
+
                 Imageholder.setImageBitmap(selectedImageFromCamera)
 
             }
         }
     }
 
-/**
---------------------Permission handling using dexter--------------------------
- */
+    /**
+    --------------------Permission handling using dexter--------------------------
+     */
     //https://github.com/Karumi/Dexter Dexter -- Multiple Permissions -- Library
     // https://www.geeksforgeeks.org/easy-runtime-permissions-in-android-with-dexter/
     private fun choosePhotoFromGallery(){
@@ -210,9 +232,9 @@ class AddActivity : AppCompatActivity(), View.OnClickListener{
         Dexter.withContext(this).withPermissions(
             Manifest.permission.READ_EXTERNAL_STORAGE,
             Manifest.permission.WRITE_EXTERNAL_STORAGE
-        //Refer to mulitple permissions on Dexter github,
-        //Chnaged the original code from java to kotlin,
-        // we pass in the object - MultiplePermissionsListner, which then d
+            //Refer to mulitple permissions on Dexter github,
+            //Chnaged the original code from java to kotlin,
+            // we pass in the object - MultiplePermissionsListner, which then d
         ).withListener(object: MultiplePermissionsListener{
             //This will be called when the permissions are checked and then the if statement
             //Checks if all the permissions are granted and if they are the toast message is displayed
@@ -227,7 +249,7 @@ class AddActivity : AppCompatActivity(), View.OnClickListener{
                     //cant find any alternative so using startActivityForResult, result is checked after
                     //onActivityResult is finished...
                     startActivityForResult(galleryIntent, GALLERY)
-            }}
+                }}
 
             // in onPermissionRationaleShouldBeShown is where we need to tell the user why we need permissions...
             override fun onPermissionRationaleShouldBeShown(permissions: MutableList<PermissionRequest>,
@@ -235,14 +257,14 @@ class AddActivity : AppCompatActivity(), View.OnClickListener{
             {
                 AlertDialog.Builder(this@AddActivity).setMessage(
                     "Permissions need to enabled in settings").setPositiveButton("GO TO SETTINGS"
-                //the following code sends the user to the settings, were not passing any variables so instead we use _
-                //we run an intent called Settings.ACTION......
-                //we are also passing the uri, which is the uri for packagename...
-                //so we send the user directly to application settings where we can change the user permissions
-                //we add the data to the intent, the uri...
-                //then we start the activity
-                //https://stackoverflow.com/questions/19517417/opening-android-settings-programmatically
-                //additonally I put a try and catch for error handling
+                    //the following code sends the user to the settings, were not passing any variables so instead we use _
+                    //we run an intent called Settings.ACTION......
+                    //we are also passing the uri, which is the uri for packagename...
+                    //so we send the user directly to application settings where we can change the user permissions
+                    //we add the data to the intent, the uri...
+                    //then we start the activity
+                    //https://stackoverflow.com/questions/19517417/opening-android-settings-programmatically
+                    //additonally I put a try and catch for error handling
                 ) { _, _ ->
                     try {
                         val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
@@ -255,8 +277,8 @@ class AddActivity : AppCompatActivity(), View.OnClickListener{
 
                     //If the user clicks the negative button, we dialog.dismiss
                 }.setNegativeButton("Cancel") {dialog, _ ->
-                        dialog.dismiss()
-                    }.show()
+                    dialog.dismiss()
+                }.show()
             }
         }).onSameThread().check()
     }
@@ -298,9 +320,47 @@ class AddActivity : AppCompatActivity(), View.OnClickListener{
         }).onSameThread().check()
     }
 
+
+
+
+    //https://stackoverflow.com/questions/17674634/saving-and-reading-bitmaps-images-from-internal-memory-in-android
+    //https://stackoverflow.com/questions/53121993/kotlin-how-to-save-image-from-internet-to-internal-storage
+    //https://youtu.be/EeLz1DPMsW8 ----> around 9mins into the video...
+    private fun storingImage(bitmap: Bitmap) : Uri{
+        //We use the context wrapper to get the directory to where the image is stored
+        val wrapper = ContextWrapper(applicationContext)
+        //.MODE_PRIVATE allows the file only accessible from the calling application/ or all applications that share the same user ID
+        var file = wrapper.getDir(IMAGE_DIRECTORY, Context.MODE_PRIVATE)
+        //we create a File from using the directory above and then it should have a unique identifier name,
+        file = File(file,"${UUID.randomUUID()}.jpg")
+
+        //Now that we have the file we can store it by using outputstream...
+        try {
+            //we create a stream which will be our OutputStream which will output a image to our device,
+            //its of type fileoutputstream which we pass "file" through
+            val stream : OutputStream = FileOutputStream(file)
+            //using this compress method we choose our compress format, we then set out quality,
+            //the bitmap we use is the bitmap that is passed through the function
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, stream)
+            //after compressing we flush the stream, flushing allows all data that has been written to that stream is output
+            stream.flush()
+            //we then finally close the stream..
+            stream.close()
+
+        }catch (e : IOException){
+            e.printStackTrace()
+        }
+        //we need to return a uri to the function,
+        //our file has a path (the directory and the name)
+        //we use that file and then we parse it into the format of a URI
+        return Uri.parse(file.absolutePath)
+
+    }
+
     //companion object for static variables...
-companion object {
+    companion object {
         private const val GALLERY = 1
         private const val CAMERA = 2
-}
+        private const val IMAGE_DIRECTORY = "FavPlaceImages"
+    }
 }

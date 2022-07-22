@@ -1,6 +1,7 @@
 package org.wit.favouriteplaceapp.adapter
 
 import android.content.Context
+import android.net.Uri
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -47,6 +48,8 @@ open class PlaceAdapter(
         val model = list[position]
 
         if (holder is MyViewHolder) {
+            //setting the image uri as the ImageFavDisplay
+            holder.itemView.ImageFavDisplay.setImageURI(Uri.parse(model.image))
             holder.itemView.titleDis.text = model.title
             holder.itemView.descriptionDis.text = model.description
 

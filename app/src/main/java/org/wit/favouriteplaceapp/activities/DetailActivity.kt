@@ -1,5 +1,6 @@
 package org.wit.favouriteplaceapp.activities
 
+import android.net.Uri
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import kotlinx.android.synthetic.main.fav_place_detail_view.*
@@ -23,7 +24,8 @@ class DetailActivity : AppCompatActivity() {
         //We check if an extra which has this name and if it does then assign the intent which gets
         //the serizable extra from the main activity as the placemodel...
         if(intent.hasExtra(MainActivity.EXTRA_PLACE_DETAILS )){
-            DetailModel = intent.getSerializableExtra(MainActivity.EXTRA_PLACE_DETAILS) as PlaceModel
+            DetailModel = intent.getParcelableExtra(
+                MainActivity.EXTRA_PLACE_DETAILS) as PlaceModel?
         }
         //then we check if our place model is not empty, we set the title of the selected element on the top
         // of the screen, if you click it you back press..
@@ -35,6 +37,9 @@ class DetailActivity : AppCompatActivity() {
             toolbar_fav_place_detail.setNavigationOnClickListener{
                 onBackPressed()
             }
+            iv_place_image.setImageURI(Uri.parse(DetailModel.image))
+            tv_description.text = DetailModel.description
+            tv_location.text = DetailModel.location
         }
     }
 
