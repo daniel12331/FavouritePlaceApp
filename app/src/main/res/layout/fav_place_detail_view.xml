@@ -5,7 +5,9 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".activities.DetailActivity">
+    tools:context=".ui.activities.DetailActivity">
+
+
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/toolbar_fav_place_detail"
         android:layout_width="match_parent"
@@ -79,7 +81,7 @@
                 android:layout_marginStart="8dp"
                 android:layout_marginTop="16dp"
                 android:layout_marginEnd="8dp"
-                android:background="@drawable/ic_launcher_background"
+                android:background="@color/colorPrimary"
                 android:gravity="center"
                 android:paddingTop="8dp"
                 android:paddingBottom="8dp"

@@ -1,10 +1,12 @@
-
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
     id 'kotlin-android'
     id 'kotlin-android-extensions'
+    id 'com.google.android.libraries.mapsplatform.secrets-gradle-plugin'
 }
+apply plugin: 'com.android.application'
+apply plugin: 'com.google.gms.google-services'
 
 android {
     compileSdk 31
@@ -38,15 +40,36 @@ android {
 }
 
 dependencies {
+    //https://console.firebase.google.com/u/0/project/danielsfavplaceapp/overview
+    implementation platform('com.google.firebase:firebase-bom:30.3.1')
+    implementation 'com.google.firebase:firebase-analytics-ktx'
+    implementation 'com.google.firebase:firebase-auth-ktx'
+    implementation 'com.google.firebase:firebase-firestore-ktx'
+    implementation 'com.google.firebase:firebase-storage-ktx:20.0.1'
 
-    implementation 'androidx.core:core-ktx:1.7.0'
-    implementation 'androidx.appcompat:appcompat:1.4.1'
-    implementation 'com.google.android.material:material:1.5.0'
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.3'
-    implementation 'com.google.android.material:material:1.5.0'
+    implementation 'androidx.core:core-ktx:1.8.0'
+    implementation 'androidx.appcompat:appcompat:1.5.0'
+    implementation 'com.google.android.material:material:1.6.1'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'com.google.android.material:material:1.6.1'
 
     //Dexter Reference = https://github.com/Karumi/Dexter
     implementation 'com.karumi:dexter:6.2.3'
+
+    //Places API
+    implementation 'com.google.android.libraries.places:places:2.6.0'
+    implementation 'com.google.android.gms:play-services-maps:18.1.0'
+    implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.5.1'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.5.1'
+    implementation 'androidx.navigation:navigation-fragment-ktx:2.5.1'
+    implementation 'androidx.navigation:navigation-ui-ktx:2.5.1'
+
+    //Glider v4, reference = https://bumptech.github.io/glide/doc/download-setup.html
+    implementation "com.github.bumptech.glide:glide:4.11.0"
+
+    //Fused Location Adapter reference = https://developers.google.com/location-context/fused-location-provider // https://developers.google.com/android/reference/com/google/android/gms/location/FusedLocationProviderClient.html
+    implementation "com.google.android.gms:play-services-location:20.0.0"
+
 
 
     testImplementation 'junit:junit:4.13.2'

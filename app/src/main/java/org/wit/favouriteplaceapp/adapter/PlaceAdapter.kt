@@ -1,16 +1,23 @@
 package org.wit.favouriteplaceapp.adapter
 
+import android.app.Activity
 import android.content.Context
+import android.content.Intent
+import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
+import kotlinx.android.synthetic.main.activity_add.view.*
 import org.wit.favouriteplaceapp.R
 import org.wit.favouriteplaceapp.models.PlaceModel
 import kotlinx.android.synthetic.main.fav_place_view.view.*
-
-
+import org.wit.favouriteplaceapp.ui.activities.AddActivity
+import org.wit.favouriteplaceapp.ui.activities.DetailActivity
+import org.wit.favouriteplaceapp.ui.activities.fragments.ListFragment
+import org.wit.favouriteplaceapp.utils.Constants
+import org.wit.favouriteplaceapp.utils.GlideLoader
 
 open class PlaceAdapter(
     private val context: Context,
@@ -22,7 +29,6 @@ open class PlaceAdapter(
     // create a new
     // {@link ViewHolder} and initializes some private fields to be used by RecyclerView.
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
-
         return MyViewHolder(
             LayoutInflater.from(context).inflate(
                 R.layout.fav_place_view,
@@ -37,7 +43,6 @@ open class PlaceAdapter(
         this.onClickListener = onClickListener
     }
 
-
     // Binds each item in the ArrayList to a view
     // called when RecyclerView needs a new ViewHolder of the given type to represent
     //an item
@@ -48,8 +53,10 @@ open class PlaceAdapter(
         val model = list[position]
 
         if (holder is MyViewHolder) {
-            //setting the image uri as the ImageFavDisplay
-            holder.itemView.ImageFavDisplay.setImageURI(Uri.parse(model.image))
+            //setting the image uri as the ImageFavDisplay, we use Glider for an easy way to load an image for our Image display
+            //https://bumptech.github.io/glide/doc/getting-started.html#basic-usage
+            //https://github.com/bumptech/glide
+            GlideLoader(context).loadFavPlaceImage(model.image!!, holder.itemView.ImageFavDisplay)
             holder.itemView.titleDis.text = model.title
             holder.itemView.descriptionDis.text = model.description
 
@@ -57,13 +64,24 @@ open class PlaceAdapter(
             //clicked (position of the recyclerview), then were passing the placemodel which is then populating the
             //relevant info....
             holder.itemView.setOnClickListener{
-                if(onClickListener !=null){
-                    onClickListener!!.onClick(position,model)
+            val intent = Intent(context, DetailActivity::class.java)
+                intent.putExtra(Constants.EXTRA_PLACE_ID, model.place_id)
+                context.startActivity(intent)
                 }
             }
         }
-    }
 
+
+    //with this function I want to notify our adapter that the specific element I would like to make my change on
+    fun editItem(activity: ListFragment, position: Int){
+        //we send them to add activity
+        val intent = Intent(context, AddActivity::class.java)
+        //putting extra info into the intent with the list position of the specific element....
+        intent.putExtra(Constants.EXTRA_PLACE_DETAILS, list[position])
+        activity.startActivity(intent)
+        //we make sure the adapter is notified about the changes made to the element...
+        notifyItemChanged(position)
+    }
 
     // Gets the number of items in the list
     override fun getItemCount(): Int {
@@ -78,3 +96,4 @@ open class PlaceAdapter(
     // A ViewHolder describes an item view and metadata about its place within the RecyclerView.
     private class MyViewHolder(view: View) : RecyclerView.ViewHolder(view)
 }
+

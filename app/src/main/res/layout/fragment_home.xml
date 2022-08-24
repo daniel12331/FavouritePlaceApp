@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+<RelativeLayout
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:orientation="vertical">
+
+
+
+    <LinearLayout
+        android:id="@+id/layout1"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingTop="20px"
+        android:weightSum="3">
+
+        <LinearLayout
+            android:id="@+id/para1"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="2"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:paddingLeft="5dp"
+                android:fontFamily="sans-serif-medium"
+                android:text="Welcome to the Favourite Place App, this is app allows you to create favourite places around the globe, with either manually entering an address or selecting the current location to where your device is located." />
+
+        </LinearLayout>
+        <ImageView
+            android:id="@+id/layoutImg1"
+            android:layout_width="117dp"
+            android:layout_height="198dp"
+            android:layout_weight="1"
+            android:src="@android:drawable/ic_menu_camera" />
+    </LinearLayout>
+
+
+    <LinearLayout
+        android:id="@+id/layout2"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/layout1"
+        android:orientation="horizontal"
+        android:weightSum="3">
+
+        <ImageView
+            android:id="@+id/layoutImg2"
+            android:layout_width="94dp"
+            android:layout_height="198dp"
+            android:layout_weight="1"
+            android:src="@drawable/placesapi" />
+
+        <LinearLayout
+            android:id="@+id/para2"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="2"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:fontFamily="sans-serif-medium"
+                android:text="This application currently uses Places API, the Places API lets you bring location context into an application, it can return a list of places based either under a users location or a search string, this app has implemented both of these features.  " />
+
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/layout3"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/layout2"
+        android:orientation="horizontal"
+        android:weightSum="3">
+
+
+        <LinearLayout
+            android:id="@+id/para3"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="2"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-medium"
+                android:paddingLeft="5dp"
+                android:paddingTop="30dp"
+                android:text="This application also uses the Google Maps API, it pretty much uses the power of google maps for pin pointing favourtie places on the map by using longitude and latitude values stored by the user." />
+
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/layoutImg3"
+            android:layout_width="94dp"
+            android:layout_height="198dp"
+            android:layout_weight="1"
+            android:src="@drawable/googlemaps" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/layout4"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/layout3"
+        android:orientation="horizontal"
+        android:weightSum="3">
+
+        <ImageView
+            android:id="@+id/layoutImg4"
+            android:layout_width="94dp"
+            android:layout_height="198dp"
+            android:layout_weight="1"
+            android:src="@drawable/fusedadapter" />
+
+        <LinearLayout
+            android:id="@+id/para4"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="2"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:paddingLeft="5dp"
+                android:fontFamily="sans-serif-medium"
+                android:text="This application also uses the Fused Location Provider API, which uses Google Play services that can intelligently combine different signals to provide the location info that the app needs." />
+        </LinearLayout>
+    </LinearLayout>
+
+
+    <LinearLayout
+        android:id="@+id/layout5"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/layout4"
+        android:orientation="horizontal"
+        android:weightSum="3">
+
+
+        <LinearLayout
+            android:id="@+id/para5"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="2"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-medium"
+                android:paddingLeft="5dp"
+                android:paddingTop="30dp"
+                android:text="This application uses Glide, which is a fast and effcient image loading libary for Android, it supports fetching, decoding and displaying images and video. " />
+
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/layoutImg5"
+            android:layout_width="94dp"
+            android:layout_height="198dp"
+            android:layout_weight="1"
+            android:src="@drawable/glide" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/layout6"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/layout5"
+        android:orientation="horizontal"
+        android:weightSum="3">
+
+        <ImageView
+            android:id="@+id/layoutImg6"
+            android:layout_width="94dp"
+            android:layout_height="198dp"
+            android:layout_weight="1"
+            android:src="@drawable/dexter" />
+
+        <LinearLayout
+            android:id="@+id/para6"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="2"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:fontFamily="sans-serif-medium"
+                android:text="This application also uses Dexter, Dexter is an Android libary that simplifies the process of requesting permissions at runtime." />
+        </LinearLayout>
+    </LinearLayout>
+
+
+
+</RelativeLayout>
+</ScrollView>

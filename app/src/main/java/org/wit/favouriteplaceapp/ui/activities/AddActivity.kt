@@ -1,49 +1,62 @@
-package org.wit.favouriteplaceapp.activities
+package org.wit.favouriteplaceapp.ui.activities
 
 import android.Manifest
-import android.app.Activity
+import android.annotation.SuppressLint
 import android.app.DatePickerDialog
 import android.content.ActivityNotFoundException
-import android.content.Context
-import android.content.ContextWrapper
 import android.content.Intent
 import android.graphics.Bitmap
+import android.location.Location
+import android.location.LocationManager
 import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.os.Looper
 import android.provider.MediaStore
 import android.provider.Settings
+import android.util.Log
 import android.view.View
 import android.widget.Toast
-import androidx.activity.result.ActivityResultCallback
 import androidx.appcompat.app.AlertDialog
+import com.google.android.gms.location.*
+import com.google.android.libraries.places.api.Places
+import com.google.android.libraries.places.api.model.Place
+import com.google.android.libraries.places.widget.Autocomplete
+import com.google.android.libraries.places.widget.model.AutocompleteActivityMode
 import com.karumi.dexter.Dexter
 import com.karumi.dexter.MultiplePermissionsReport
 import com.karumi.dexter.PermissionToken
 import com.karumi.dexter.listener.PermissionRequest
 import com.karumi.dexter.listener.multi.MultiplePermissionsListener
 import kotlinx.android.synthetic.main.activity_add.*
-import kotlinx.android.synthetic.main.fav_place_detail_view.*
 import org.wit.favouriteplaceapp.R
-import org.wit.favouriteplaceapp.database.Database
 import org.wit.favouriteplaceapp.databinding.ActivityAddBinding
+import org.wit.favouriteplaceapp.firestore.FirestoreClass
 import org.wit.favouriteplaceapp.models.PlaceModel
-import java.io.File
-import java.io.FileOutputStream
+import org.wit.favouriteplaceapp.utils.Constants
+import org.wit.favouriteplaceapp.utils.GetPlaceFromLatLng
+import org.wit.favouriteplaceapp.utils.GlideLoader
 import java.io.IOException
-import java.io.OutputStream
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.Calendar.getInstance
 
-class AddActivity : AppCompatActivity(), View.OnClickListener{
+@Suppress("DEPRECATION")
+open class AddActivity : AppCompatActivity(), View.OnClickListener{
     private lateinit var addLayout : ActivityAddBinding
+
+    private var saveImageURI : Uri? = null
+    private var mFavPlaceImage : String = ""
 
     private var cal = getInstance()
     private lateinit var dateSetListner: DatePickerDialog.OnDateSetListener
-    private var saveImageURI : Uri? = null
+
     private var Latitude : Double = 0.0
     private var Longitude : Double = 0.0
+
+    private var mFavPlaceDetails : PlaceModel? = null
+
+    private lateinit var mFusedLocationClient: FusedLocationProviderClient
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,8 +64,33 @@ class AddActivity : AppCompatActivity(), View.OnClickListener{
         // Binding add_activity xml file and setting content view
         addLayout = ActivityAddBinding.inflate(layoutInflater)
         setContentView(addLayout.root)
-
         setSupportActionBar(addLayout.toolbaraddplace)
+
+
+        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+
+        //if intent has extra we populate the items..
+        if(intent.hasExtra(Constants.EXTRA_PLACE_DETAILS)){
+            //whatever is avaliable at that specific position we want to pass it...
+            mFavPlaceDetails = intent.getParcelableExtra(Constants.EXTRA_PLACE_DETAILS)
+        }
+        if(mFavPlaceDetails !=null){
+            if(mFavPlaceDetails!!.place_id!!.isNotEmpty()){
+                supportActionBar?.title = "Edit Favourite Place"
+                addLayout.SaveBtn.text = "Update"
+
+                addLayout.title.setText(mFavPlaceDetails?.title)
+                addLayout.description.setText(mFavPlaceDetails!!.description)
+                addLayout.date.setText(mFavPlaceDetails!!.date)
+                addLayout.location.setText(mFavPlaceDetails!!.location)
+                Latitude = mFavPlaceDetails!!.latitude!!
+                Longitude = mFavPlaceDetails!!.longitude!!
+                mFavPlaceImage = mFavPlaceDetails!!.image!!
+
+                GlideLoader(this).loadFavPlaceImage(mFavPlaceDetails!!.image!!, addLayout.Imageholder)
+
+            }
+        }
 
         // Back Button
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
@@ -61,9 +99,13 @@ class AddActivity : AppCompatActivity(), View.OnClickListener{
             onBackPressed()
         }
 
+        if(!Places.isInitialized()){
+            Places.initialize(this@AddActivity, resources.getString(R.string.google_maps_key))
+            }
+
         // We open the date dialog and wait for a user to set a date
         dateSetListner = DatePickerDialog.OnDateSetListener {
-                view, year, month, dayOfMonth ->
+                _, year, month, dayOfMonth ->
             cal.set(Calendar.YEAR, year)
             cal.set(Calendar.MONTH, month)
             cal.set(Calendar.DAY_OF_MONTH, dayOfMonth)
@@ -73,12 +115,59 @@ class AddActivity : AppCompatActivity(), View.OnClickListener{
         }
         //We automatically fill the date using the current date thats why this method is outside
         updateDateInView()
+
+        //if mFavPlaceDetails is null we know we are just creating a new entry,
+        //but if it is not null we know we actually are editing something with the populated data
+
         //We use this on SetOnClickListener because the AddActivity class is also our
         //on click listener
         addLayout.date.setOnClickListener(this)
         addLayout.AddImageBtn.setOnClickListener(this)
         addLayout.SaveBtn.setOnClickListener(this)
+        addLayout.location.setOnClickListener(this)
+        addLayout.SelectCurrentLocation.setOnClickListener(this)
     }
+    private fun isLocationEnabled(): Boolean {
+        val locationManager : LocationManager = getSystemService(LOCATION_SERVICE) as LocationManager
+        return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
+                || locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+
+    }
+    //requestiong location from selectcurrentlocation btn
+    //We will suppress the .requestLocationUpdate, as we already check permissions before running this function,
+    //hence the reason why we suppress the error
+    @SuppressLint("MissingPermission")
+    private fun requestLocationData() {
+        var mLocationRequest = LocationRequest()
+        mLocationRequest.priority = LocationRequest.PRIORITY_HIGH_ACCURACY
+        mLocationRequest.interval = 1000
+        mLocationRequest.numUpdates = 1
+
+        mFusedLocationClient.requestLocationUpdates(
+            mLocationRequest, mLocationCallBack, Looper.myLooper())
+
+    }
+
+    private val mLocationCallBack = object : LocationCallback(){
+        override fun onLocationResult(p0: LocationResult) {
+            val mLastLocation: Location = p0.lastLocation!!
+            Latitude = mLastLocation.latitude
+            Longitude = mLastLocation.longitude
+
+            val placeTask = GetPlaceFromLatLng(this@AddActivity, Latitude, Longitude)
+
+            placeTask.setPlaceListener(object : GetPlaceFromLatLng.PlaceListener {
+                override fun onPlaceFound(place: String?) {
+                    addLayout.location.setText(place)
+                }
+                override fun onError() {
+                    Log.e("Get Place Address::", "Something went wrong")
+                }
+            })
+            placeTask.getPlaceAddress()
+        }
+    }
+
     // OnClick to handle all the onclick events in the add activity
     override fun onClick(v: View?) {
         // Whatever view that was clicked on is going to be passed through as v and
@@ -109,34 +198,15 @@ class AddActivity : AppCompatActivity(), View.OnClickListener{
                     addLayout.location.text.isNullOrEmpty() -> {
                         Toast.makeText(this, "Please enter a location", Toast.LENGTH_SHORT).show()
                     }
-                    saveImageURI == null ->{
-                        Toast.makeText(this, "Please select an Image", Toast.LENGTH_SHORT).show()
+                    (saveImageURI == null && mFavPlaceDetails!!.image!!.isEmpty()) -> {
+                        Toast.makeText(this, "Please enter a Image", Toast.LENGTH_SHORT).show()
                     }
                     else -> {
-
-                        val favModel = PlaceModel(
-
-                            0,
-                            addLayout.title.text.toString(),
-                            saveImageURI.toString(),
-                            addLayout.description.text.toString(),
-                            addLayout.date.text.toString(),
-                            addLayout.location.text.toString(),
-                            Latitude,
-                            Longitude
-                        )
-                        val dbHandler =  Database(this)
-                        //the add method returns a long value which we store below
-                        val addFavPlace = dbHandler.addFavouritePlace(favModel)
-                        if(addFavPlace > 0){
-                            setResult(Activity.RESULT_OK)
-                            finish()
-                        }
-                        //Finishes add activity and goes back to main
-                    }
-
+                        uploadFavPlaceImage()
+                 }
                 }
             }
+
             /**
             --------------------Gallery and Camera picking functionality--------------------------
              */
@@ -160,7 +230,72 @@ class AddActivity : AppCompatActivity(), View.OnClickListener{
                 pictureDialog.show()
 
             }
+            R.id.location ->{
+                 try {
+                     //GOOGLES STRUCTURE FOR PLACES API
+                     //https://youtu.be/iEzF9G8gDy0
+                    //this is the list of fields which has to be passed
+                     val fields = listOf(
+                         Place.Field.ID, Place.Field.NAME, Place.Field.LAT_LNG,
+                         Place.Field.ADDRESS
+                     )
+                     // start the autocomplete intent with a unique request code.
+                     val intent =
+                         Autocomplete.IntentBuilder(AutocompleteActivityMode.FULLSCREEN, fields)
+                             .build(this@AddActivity)
+                     startActivityForResult(intent, Constants.PLACE_AUTO)
+
+
+
+                 }
+                 catch (e:Exception){
+                     e.printStackTrace()
+                 }
+            }
+            R.id.SelectCurrentLocation -> {
+                if(!isLocationEnabled()){
+                    Toast.makeText(this,"Your location provider is turned off, please turn it on!",Toast.LENGTH_SHORT).show()
+
+                    val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+                    startActivity(intent)
+                }else{
+                    Dexter.withActivity(this).withPermissions(
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    )
+                        .withListener(object : MultiplePermissionsListener {
+
+                        override fun onPermissionsChecked(report: MultiplePermissionsReport?) {
+
+                            if (report!!.areAllPermissionsGranted()) {
+
+                                requestLocationData()
+                            }
+                        }
+                        override fun onPermissionRationaleShouldBeShown(
+                            permissions: MutableList<PermissionRequest>?,
+                            token: PermissionToken?
+                        ){
+                            AlertDialog.Builder(this@AddActivity).setMessage(
+                                "Permissions need to enabled in settings").setPositiveButton("GO TO SETTINGS"
+                            ) { _, _ ->
+                                try {
+                                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                                    val uri = Uri.fromParts("package", packageName, null)
+                                    intent.data = uri
+                                    startActivity(intent)
+                                } catch (e: ActivityNotFoundException) {
+                                    e.printStackTrace()
+                                }
+                            }.setNegativeButton("Cancel") {dialog, _ ->
+                                dialog.dismiss()
+                            }.show()
+                        }
+                        }).onSameThread().check()
+                }
+            }
         }
+
     }
 
     // Function to update date in the view
@@ -179,24 +314,19 @@ class AddActivity : AppCompatActivity(), View.OnClickListener{
     public override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         //We check if the resultCode is ok
-        if(resultCode == Activity.RESULT_OK){
+        if(resultCode == RESULT_OK){
             //Then we check if the actvity result is from that call...
-            if(requestCode == GALLERY){
+            if(requestCode == Constants.GALLERY){
                 //then we check if the data we get is not null, then we run the code..
                 if(data != null){
                     //we then get the content uri which is data.data
-                    val contentURI = data.data
+                     saveImageURI = data.data
                     //once we have the data we can try
                     try{
                         //we will try to get a image from the mediastore and from the contentURI
                         //cant find a alternative instead of using getBitmap
                         //we pass the data through getBitmap and we use the contentresolver to resolve the contentURI to the content provider..
-                        val selectedImage = MediaStore.Images.Media.getBitmap(this.contentResolver, contentURI)
-
-
-
-                        //we call the storingImage and we pass our bitmap(selectedImage)
-                        saveImageURI = storingImage(selectedImage)
+                        val selectedImage = MediaStore.Images.Media.getBitmap(this.contentResolver, saveImageURI)
                         //finally we set the image
                         Imageholder.setImageBitmap(selectedImage)
                     } catch (e: IOException){
@@ -206,17 +336,22 @@ class AddActivity : AppCompatActivity(), View.OnClickListener{
                 }
                 //Camera request code...
 
-            } else if(requestCode == CAMERA){
+            } else if(requestCode == Constants.CAMERA){
                 //https://stackoverflow.com/questions/5991319/capture-image-from-camera-and-display-in-activity
                 //we take the "data" and we get extras from it so when we take the image the data will contain the image, we get that data by using .get("data") which will give us the object,
                 // and then we convert it into a bitmap...
                 val selectedImageFromCamera : Bitmap = data!!.extras!!.get("data") as Bitmap
 
-                //we call the storingImage and we pass our bitmap(selectedImageFromCamera)
-                saveImageURI = storingImage(selectedImageFromCamera)
-
                 Imageholder.setImageBitmap(selectedImageFromCamera)
 
+            }
+            //new request code for places autocomplete
+            else if(requestCode == Constants.PLACE_AUTO ){
+                //this is all following googles structure...
+                val place: Place = Autocomplete.getPlaceFromIntent(data!!)
+                addLayout.location.setText(place.address)
+                Latitude = place.latLng!!.latitude
+                Longitude = place.latLng!!.longitude
             }
         }
     }
@@ -248,7 +383,7 @@ class AddActivity : AppCompatActivity(), View.OnClickListener{
                         MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
                     //cant find any alternative so using startActivityForResult, result is checked after
                     //onActivityResult is finished...
-                    startActivityForResult(galleryIntent, GALLERY)
+                    startActivityForResult(galleryIntent, Constants.GALLERY)
                 }}
 
             // in onPermissionRationaleShouldBeShown is where we need to tell the user why we need permissions...
@@ -289,7 +424,6 @@ class AddActivity : AppCompatActivity(), View.OnClickListener{
             Manifest.permission.READ_EXTERNAL_STORAGE,
             Manifest.permission.WRITE_EXTERNAL_STORAGE,
             Manifest.permission.CAMERA
-
         ).withListener(object: MultiplePermissionsListener{
             override fun onPermissionsChecked(report: MultiplePermissionsReport?)
             {
@@ -297,7 +431,7 @@ class AddActivity : AppCompatActivity(), View.OnClickListener{
                 if(report!!.areAllPermissionsGranted()){
                     //Intent will be directly to the mediastore
                     val galleryIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-                    startActivityForResult(galleryIntent, CAMERA)
+                    startActivityForResult(galleryIntent, Constants.CAMERA)
                 }}
             override fun onPermissionRationaleShouldBeShown(permissions: MutableList<PermissionRequest>,
                                                             token: PermissionToken )
@@ -321,46 +455,59 @@ class AddActivity : AppCompatActivity(), View.OnClickListener{
     }
 
 
+    private fun uploadFavPlaceImage() {
+            if(saveImageURI != null){
+                FirestoreClass().uploadImage(this, saveImageURI)
+            }
+        else {
+                Toast.makeText(this, "Place was updated successfully", Toast.LENGTH_SHORT).show()
+                uploadFavPlaceDetails()
+
+            }
+    }
 
 
-    //https://stackoverflow.com/questions/17674634/saving-and-reading-bitmaps-images-from-internal-memory-in-android
-    //https://stackoverflow.com/questions/53121993/kotlin-how-to-save-image-from-internet-to-internal-storage
-    //https://youtu.be/EeLz1DPMsW8 ----> around 9mins into the video...
-    private fun storingImage(bitmap: Bitmap) : Uri{
-        //We use the context wrapper to get the directory to where the image is stored
-        val wrapper = ContextWrapper(applicationContext)
-        //.MODE_PRIVATE allows the file only accessible from the calling application/ or all applications that share the same user ID
-        var file = wrapper.getDir(IMAGE_DIRECTORY, Context.MODE_PRIVATE)
-        //we create a File from using the directory above and then it should have a unique identifier name,
-        file = File(file,"${UUID.randomUUID()}.jpg")
+    private fun uploadFavPlaceDetails() {
 
-        //Now that we have the file we can store it by using outputstream...
-        try {
-            //we create a stream which will be our OutputStream which will output a image to our device,
-            //its of type fileoutputstream which we pass "file" through
-            val stream : OutputStream = FileOutputStream(file)
-            //using this compress method we choose our compress format, we then set out quality,
-            //the bitmap we use is the bitmap that is passed through the function
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, stream)
-            //after compressing we flush the stream, flushing allows all data that has been written to that stream is output
-            stream.flush()
-            //we then finally close the stream..
-            stream.close()
+        val model = PlaceModel(
+            FirestoreClass().getCurrentUserID(),
+            addLayout.title.text.toString(),
+            mFavPlaceImage,
+            addLayout.description.text.toString(),
+            addLayout.date.text.toString(),
+            addLayout.location.text.toString(),
+            Latitude,
+            Longitude
 
-        }catch (e : IOException){
-            e.printStackTrace()
+        )
+        //Check if the there is details in the mFavPlaceDetails, if so we we can update it.. if not we can add it...
+        if(mFavPlaceDetails != null && mFavPlaceDetails!!.place_id!!.isNotEmpty() ){
+            FirestoreClass().updateFavDetails(this, model, mFavPlaceDetails!!.place_id!!)
         }
-        //we need to return a uri to the function,
-        //our file has a path (the directory and the name)
-        //we use that file and then we parse it into the format of a URI
-        return Uri.parse(file.absolutePath)
+        else{
+            FirestoreClass().uploadFavPlace(this, model)
+        }
 
     }
 
-    //companion object for static variables...
-    companion object {
-        private const val GALLERY = 1
-        private const val CAMERA = 2
-        private const val IMAGE_DIRECTORY = "FavPlaceImages"
+    fun imageUploadSuccess(imageURL: String){
+        mFavPlaceImage = imageURL
+        uploadFavPlaceDetails()
     }
+    fun placeUploadSuccess(){
+        Toast.makeText(this, "Place was uploaded successfully", Toast.LENGTH_SHORT).show()
+        finish()
+    }
+    fun updateDetailsSuccess(){
+
+        //We do something similar to before, but instead of using functions we display toasts, we can either notify the user that he updated or added a place..
+        if(mFavPlaceDetails != null && mFavPlaceDetails!!.id!!.isNotEmpty() ){
+            Toast.makeText(this@AddActivity,"Favourtie Place was updated successfully", Toast.LENGTH_SHORT).show()
+        }
+        else{
+            Toast.makeText(this@AddActivity,"Favourtie Place was added successfully", Toast.LENGTH_SHORT).show()
+        }
+        finish()
+    }
+
 }
